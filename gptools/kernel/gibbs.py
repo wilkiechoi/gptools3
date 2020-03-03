@@ -1,17 +1,17 @@
-# Copyright 2019 Mark Chilenski
+# Copyright 2014 Mark Chilenski
 # This program is distributed under the terms of the GNU General Purpose License (GPL).
 # Refer to http://www.gnu.org/licenses/gpl.txt
-#
+# 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-#
+# 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
+# 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -28,23 +28,19 @@ try:
     import mpmath
 except ImportError:
     import warnings
-    warnings.warn(
-        "Could not import mpmath. Arbitrary warping functions for Gibbs "
-        "kernels will not function.",
-        ImportWarning
-    )
+    warnings.warn("Could not import mpmath. Arbitrary warping functions for Gibbs kernels will not function.",
+                  ImportWarning)
 import scipy
 import scipy.interpolate
 import inspect
 
-
 def tanh_warp_arb(X, l1, l2, lw, x0):
     r"""Warps the `X` coordinate with the tanh model
-
+    
     .. math::
-
+    
         l = \frac{l_1 + l_2}{2} - \frac{l_1 - l_2}{2}\tanh\frac{x-x_0}{l_w}
-
+    
     Parameters
     ----------
     X : :py:class:`Array`, (`M`,) or scalar float
@@ -57,7 +53,7 @@ def tanh_warp_arb(X, l1, l2, lw, x0):
         Length scale of the transition between the two length scales.
     x0 : float
         Location of the center of the transition between the two length scales.
-
+    
     Returns
     -------
     l : :py:class:`Array`, (`M`,) or scalar float
@@ -70,14 +66,13 @@ def tanh_warp_arb(X, l1, l2, lw, x0):
     else:
         return 0.5 * ((l1 + l2) - (l1 - l2) * mpmath.tanh((X - x0) / lw))
 
-
 def gauss_warp_arb(X, l1, l2, lw, x0):
     r"""Warps the `X` coordinate with a Gaussian-shaped divot.
-
+    
     .. math::
-
+        
         l = l_1 - (l_1 - l_2) \exp\left ( -4\ln 2\frac{(X-x_0)^2}{l_{w}^{2}} \right )
-
+    
     Parameters
     ----------
     X : :py:class:`Array`, (`M`,) or scalar float
@@ -90,7 +85,7 @@ def gauss_warp_arb(X, l1, l2, lw, x0):
         Width of the dip.
     x0 : float
         Location of the center of the dip in length scale.
-
+    
     Returns
     -------
     l : :py:class:`Array`, (`M`,) or scalar float
@@ -103,16 +98,15 @@ def gauss_warp_arb(X, l1, l2, lw, x0):
     else:
         return l1 - (l1 - l2) * mpmath.exp(-4.0 * mpmath.log(2.0) * (X - x0)**2.0 / (lw**2.0))
 
-
 class GibbsFunction1dArb(object):
     r"""Wrapper class for the Gibbs covariance function, permits the use of arbitrary warping.
-
+    
     The covariance function is given by
-
+    
     .. math::
 
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Parameters
     ----------
     warp_function : callable
@@ -121,10 +115,10 @@ class GibbsFunction1dArb(object):
     """
     def __init__(self, warp_function):
         self.warp_function = warp_function
-
+    
     def __call__(self, Xi, Xj, sigmaf, l1, l2, lw, x0):
         """Evaluate the covariance function between points `Xi` and `Xj`.
-
+        
         Parameters
         ----------
         Xi, Xj : :py:class:`Array`, :py:class:`mpf` or scalar float
@@ -136,7 +130,7 @@ class GibbsFunction1dArb(object):
         l1, l2, lw, x0 : scalar floats
             Parameters of length scale warping function, passed to
             :py:attr:`warp_function`.
-
+        
         Returns
         -------
         k : :py:class:`Array` or :py:class:`mpf`
@@ -148,37 +142,32 @@ class GibbsFunction1dArb(object):
             if isinstance(Xi, scipy.matrix):
                 Xi = scipy.asarray(Xi, dtype=float)
                 Xj = scipy.asarray(Xj, dtype=float)
-            return sigmaf**2.0 * (
-                scipy.sqrt(2.0 * li * lj / (li**2.0 + lj**2.0)) *
-                scipy.exp(-(Xi - Xj)**2.0 / (li**2 + lj**2))
-            )
+            return sigmaf**2.0 * (scipy.sqrt(2.0 * li * lj / (li**2.0 + lj**2.0)) *
+                                  scipy.exp(-(Xi - Xj)**2.0 / (li**2 + lj**2)))
         else:
-            return sigmaf**2.0 * (
-                mpmath.sqrt(2.0 * li * lj / (li**2.0 + lj**2.0)) *
-                mpmath.exp(-(Xi - Xj)**2.0 / (li**2 + lj**2))
-            )
-
+            return sigmaf**2.0 * (mpmath.sqrt(2.0 * li * lj / (li**2.0 + lj**2.0)) *
+                                  mpmath.exp(-(Xi - Xj)**2.0 / (li**2 + lj**2)))
 
 class GibbsKernel1dTanhArb(ArbitraryKernel):
     r"""Gibbs warped squared exponential covariance function in 1d.
-
+    
     Computes derivatives using :py:func:`mpmath.diff` and is hence in general
     much slower than a hard-coded implementation of a given kernel.
-
+    
     The covariance function is given by
-
+    
     .. math::
 
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Warps the length scale using a hyperbolic tangent:
-
+    
     .. math::
-
+    
         l = \frac{l_1 + l_2}{2} - \frac{l_1 - l_2}{2}\tanh\frac{x-x_0}{l_w}
-
+    
     The order of the hyperparameters is:
-
+    
     = ====== =======================================================================
     0 sigmaf Amplitude of the covariance function
     1 l1     Small-X saturation value of the length scale.
@@ -186,7 +175,7 @@ class GibbsKernel1dTanhArb(ArbitraryKernel):
     3 lw     Length scale of the transition between the two length scales.
     4 x0     Location of the center of the transition between the two length scales.
     = ====== =======================================================================
-
+    
     Parameters
     ----------
     **kwargs
@@ -199,27 +188,26 @@ class GibbsKernel1dTanhArb(ArbitraryKernel):
             **kwargs
         )
 
-
 class GibbsKernel1dGaussArb(ArbitraryKernel):
     r"""Gibbs warped squared exponential covariance function in 1d.
-
+    
     Computes derivatives using :py:func:`mpmath.diff` and is hence in general
     much slower than a hard-coded implementation of a given kernel.
-
+    
     The covariance function is given by
-
+    
     .. math::
 
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Warps the length scale using a gaussian:
-
+    
     .. math::
-
+        
         l = l_1 - (l_1 - l_2) \exp\left ( -4\ln 2\frac{(X-x_0)^2}{l_{w}^{2}} \right )
 
     The order of the hyperparameters is:
-
+    
     = ====== ==================================================
     0 sigmaf Amplitude of the covariance function
     1 l1     Global value of the length scale.
@@ -240,18 +228,17 @@ class GibbsKernel1dGaussArb(ArbitraryKernel):
             **kwargs
         )
 
-
 class GibbsKernel1d(Kernel):
     r"""Univariate Gibbs kernel with arbitrary length scale warping for low derivatives.
-
+    
     The covariance function is given by
-
+    
     .. math::
-
+    
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     The derivatives are hard-coded using expressions obtained from Mathematica.
-
+    
     Parameters
     ----------
     l_func : callable
@@ -269,8 +256,6 @@ class GibbsKernel1d(Kernel):
     """
     def __init__(self, l_func, num_params=None, **kwargs):
         self.l_func = l_func
-        if kwargs.get('num_dim', 1) != 1:
-            raise ValueError("Gibbs kernel only supports 1d data.")
         # TODO: Some of the logic from warping should be ported over.
         if num_params is None:
             # There are two unimportant parameters at the start of the l_func
@@ -280,14 +265,12 @@ class GibbsKernel1d(Kernel):
             except TypeError:
                 # Need to remove self from the arg list for bound method:
                 num_params = len(inspect.getargspec(l_func.__call__)[0]) - 3 + 1
-
-        super(GibbsKernel1d, self).__init__(
-            num_dim=1, num_params=num_params, **kwargs
-        )
-
+        
+        super(GibbsKernel1d, self).__init__(num_dim=1, num_params=num_params, **kwargs)
+    
     def __call__(self, Xi, Xj, ni, nj, hyper_deriv=None, symmetric=False):
         """Evaluate the covariance between points `Xi` and `Xj` with derivative order `ni`, `nj`.
-
+        
         Parameters
         ----------
         Xi : :py:class:`Matrix` or other Array-like, (`M`, `D`)
@@ -305,45 +288,41 @@ class GibbsKernel1d(Kernel):
         symmetric : bool, optional
             Whether or not the input `Xi`, `Xj` are from a symmetric matrix.
             Default is False.
-
+        
         Returns
         -------
         Kij : :py:class:`Array`, (`M`,)
             Covariances for each of the `M` `Xi`, `Xj` pairs.
-
+        
         Raises
         ------
         NotImplementedError
             If the `hyper_deriv` keyword is not None.
         """
         if hyper_deriv is not None:
-            raise NotImplementedError(
-                "Hyperparameter derivatives have not been implemented!"
-            )
-
+            raise NotImplementedError("Hyperparameter derivatives have not been implemented!")
+        
         n_combined = scipy.asarray(scipy.hstack((ni, nj)), dtype=int)
         n_combined_unique = unique_rows(n_combined)
-
-        x = scipy.asarray(Xi, dtype=float)[:, 0]
-        y = scipy.asarray(Xj, dtype=float)[:, 0]
-
+        
+        x = scipy.asarray(Xi, dtype=float)
+        y = scipy.asarray(Xj, dtype=float)
+        
         lx = self.l_func(x, 0, *self.params[1:])
         ly = self.l_func(y, 0, *self.params[1:])
         lx1 = self.l_func(x, 1, *self.params[1:])
         ly1 = self.l_func(y, 1, *self.params[1:])
-
+        
         x_y = x - y
         lx2ly2 = lx**2 + ly**2
-
+        
         k = scipy.zeros(Xi.shape[0], dtype=float)
         for n_combined_state in n_combined_unique:
             idxs = (n_combined == n_combined_state).all(axis=1)
             # Derviative expressions evaluated with Mathematica, assuming l>0.
             if (n_combined_state == scipy.asarray([0, 0])).all():
-                k[idxs] = (
-                    scipy.sqrt(2.0 * lx[idxs] * ly[idxs] / lx2ly2[idxs]) *
-                    scipy.exp(-x_y[idxs]**2 / lx2ly2[idxs])
-                )
+                k[idxs] = (scipy.sqrt(2.0 * lx[idxs] * ly[idxs] / lx2ly2[idxs]) *
+                           scipy.exp(-x_y[idxs]**2 / lx2ly2[idxs]))
             elif (n_combined_state == scipy.asarray([1, 0])).all():
                 k[idxs] = (
                     (
@@ -351,7 +330,7 @@ class GibbsKernel1d(Kernel):
                         ly[idxs] * (
                             -4 * x_y[idxs] * lx[idxs]**3 -
                             4 * x_y[idxs] * lx[idxs] * ly[idxs]**2 +
-                            4 * x_y[idxs]**2 * lx[idxs]**2 * lx1[idxs] -
+                            4 * x_y[idxs]**2 * lx[idxs]**2 * lx1[idxs] - 
                             lx[idxs]**4 * lx1[idxs] +
                             ly[idxs]**4 * lx1[idxs]
                         )
@@ -364,7 +343,7 @@ class GibbsKernel1d(Kernel):
                         lx[idxs] * (
                             4 * x_y[idxs] * ly[idxs]**3 +
                             4 * x_y[idxs] * ly[idxs] * lx[idxs]**2 +
-                            4 * x_y[idxs]**2 * ly[idxs]**2 * ly1[idxs] -
+                            4 * x_y[idxs]**2 * ly[idxs]**2 * ly1[idxs] - 
                             ly[idxs]**4 * ly1[idxs] +
                             lx[idxs]**4 * ly1[idxs]
                         )
@@ -415,21 +394,17 @@ class GibbsKernel1d(Kernel):
                     ) / (2 * scipy.sqrt(2 * lx[idxs] * ly[idxs]) * lx2ly2[idxs]**4.5)
                 )
             else:
-                raise NotImplementedError(
-                    "Derivatives greater than [1, 1] are not supported!"
-                )
+                raise NotImplementedError("Derivatives greater than [1, 1] are not supported!")
         k = self.params[0]**2 * k
-
         return k
-
 
 def tanh_warp(x, n, l1, l2, lw, x0):
     r"""Implements a tanh warping function and its derivative.
-
+    
     .. math::
-
+    
         l = \frac{l_1 + l_2}{2} - \frac{l_1 - l_2}{2}\tanh\frac{x-x_0}{l_w}
-
+    
     Parameters
     ----------
     x : float or array of float
@@ -444,12 +419,12 @@ def tanh_warp(x, n, l1, l2, lw, x0):
         Transition width.
     x0 : float
         Transition location.
-
+    
     Returns
     -------
     l : float or array
         Warped length scale at the given locations.
-
+    
     Raises
     ------
     NotImplementedError
@@ -460,30 +435,27 @@ def tanh_warp(x, n, l1, l2, lw, x0):
     elif n == 1:
         return -(l1 - l2) / (2.0 * lw) * (scipy.cosh((x - x0) / lw))**(-2.0)
     else:
-        raise NotImplementedError(
-            "Only derivatives up to order 1 are supported!"
-        )
-
+        raise NotImplementedError("Only derivatives up to order 1 are supported!")
 
 class GibbsKernel1dTanh(GibbsKernel1d):
     r"""Gibbs warped squared exponential covariance function in 1d.
-
+    
     Uses hard-coded implementation up to first derivatives.
-
+    
     The covariance function is given by
-
+    
     .. math::
 
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Warps the length scale using a hyperbolic tangent:
-
+    
     .. math::
-
+    
         l = \frac{l_1 + l_2}{2} - \frac{l_1 - l_2}{2}\tanh\frac{x-x_0}{l_w}
-
+    
     The order of the hyperparameters is:
-
+    
     = ====== =======================================================================
     0 sigmaf Amplitude of the covariance function
     1 l1     Small-X saturation value of the length scale.
@@ -491,7 +463,7 @@ class GibbsKernel1dTanh(GibbsKernel1d):
     3 lw     Length scale of the transition between the two length scales.
     4 x0     Location of the center of the transition between the two length scales.
     = ====== =======================================================================
-
+    
     Parameters
     ----------
     **kwargs
@@ -504,14 +476,13 @@ class GibbsKernel1dTanh(GibbsKernel1d):
             **kwargs
         )
 
-
 def double_tanh_warp(x, n, lcore, lmid, ledge, la, lb, xa, xb):
     r"""Implements a sum-of-tanh warping function and its derivative.
-
+    
     .. math::
-
+    
         l = a\tanh\frac{x-x_a}{l_a} + b\tanh\frac{x-x_b}{l_b}
-
+    
     Parameters
     ----------
     x : float or array of float
@@ -532,7 +503,7 @@ def double_tanh_warp(x, n, lcore, lmid, ledge, la, lb, xa, xb):
         Transition of first tanh.
     xb : float
         Transition of second tanh.
-
+    
     Returns
     -------
     l : float or array
@@ -556,26 +527,25 @@ def double_tanh_warp(x, n, lcore, lmid, ledge, la, lb, xa, xb):
     else:
         raise NotImplementedError("Only derivatives up to order 1 are supported!")
 
-
 class GibbsKernel1dDoubleTanh(GibbsKernel1d):
     r"""Gibbs warped squared exponential covariance function in 1d.
-
+    
     Uses hard-coded implementation up to first derivatives.
-
+    
     The covariance function is given by
-
+    
     .. math::
 
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Warps the length scale using two hyperbolic tangents:
-
+    
     .. math::
-
+    
         l = a\tanh\frac{x-x_a}{l_a} + b\tanh\frac{x-x_b}{l_b}
-
+    
     The order of the hyperparameters is:
-
+    
     = ====== ====================================
     0 sigmaf Amplitude of the covariance function
     1 lcore  Core length scale
@@ -586,7 +556,7 @@ class GibbsKernel1dDoubleTanh(GibbsKernel1d):
     6 xa     Center of first tanh
     7 xb     Center of second tanh
     = ====== ====================================
-
+    
     Parameters
     ----------
     **kwargs
@@ -599,10 +569,9 @@ class GibbsKernel1dDoubleTanh(GibbsKernel1d):
             **kwargs
         )
 
-
 def cubic_bucket_warp(x, n, l1, l2, l3, x0, w1, w2, w3):
     """Warps the length scale with a piecewise cubic "bucket" shape.
-
+    
     Parameters
     ----------
     x : float or array-like of float
@@ -650,7 +619,6 @@ def cubic_bucket_warp(x, n, l1, l2, l3, x0, w1, w2, w3):
     else:
         raise NotImplementedError("Only up to first derivatives are supported!")
 
-
 class GibbsKernel1dCubicBucket(GibbsKernel1d):
     r"""Gibbs warped squared exponential covariance function in 1d.
 
@@ -663,7 +631,7 @@ class GibbsKernel1dCubicBucket(GibbsKernel1d):
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
 
     Warps the length scale using a "bucket" function with cubic joins.
-
+    
     The order of the hyperparameters is:
 
     = ====== ========================================
@@ -683,14 +651,11 @@ class GibbsKernel1dCubicBucket(GibbsKernel1d):
         All parameters are passed to :py:class:`~gptools.kernel.core.Kernel`.
     """
     def __init__(self, **kwargs):
-        super(GibbsKernel1dCubicBucket, self).__init__(
+        super(GibbsKernel1dBucket, self).__init__(
             cubic_bucket_warp,
-            param_names=[
-                r'\sigma_f', 'l_1', 'l_2', 'l_3', 'x_0', 'w_1', 'w_2', 'w_3'
-            ],
+            param_names=[r'\sigma_f', 'l_1', 'l_2', 'l_3', 'x_0', 'w_1', 'w_2', 'w_3'],
             **kwargs
         )
-
 
 def quintic_bucket_warp(x, n, l1, l2, l3, x0, w1, w2, w3):
     """Warps the length scale with a piecewise quintic "bucket" shape.
@@ -755,10 +720,7 @@ def quintic_bucket_warp(x, n, l1, l2, l3, x0, w1, w2, w3):
             ) * ((x > (x2 - w3 / 2.0)) & (x < (x2 + w3 / 2.0)))
         )
     else:
-        raise NotImplementedError(
-            "Only up to first derivatives are supported!"
-        )
-
+        raise NotImplementedError("Only up to first derivatives are supported!")
 
 class GibbsKernel1dQuinticBucket(GibbsKernel1d):
     r"""Gibbs warped squared exponential covariance function in 1d.
@@ -794,28 +756,25 @@ class GibbsKernel1dQuinticBucket(GibbsKernel1d):
     def __init__(self, **kwargs):
         super(GibbsKernel1dQuinticBucket, self).__init__(
             quintic_bucket_warp,
-            param_names=[
-                r'\sigma_f', 'l_1', 'l_2', 'l_3', 'x_0', 'w_1', 'w_2', 'w_3'
-            ],
+            param_names=[r'\sigma_f', 'l_1', 'l_2', 'l_3', 'x_0', 'w_1', 'w_2', 'w_3'],
             **kwargs
         )
 
-
 def exp_gauss_warp(X, n, l0, *msb):
     """Length scale function which is an exponential of a sum of Gaussians.
-
+    
     The centers and widths of the Gaussians are free parameters.
-
+    
     The length scale function is given by
-
+    
     .. math::
-
+        
         l = l_0 \exp\left ( \sum_{i=1}^{N}\beta_i\exp\left ( -\frac{(x-\mu_i)^2}{2\sigma_i^2} \right ) \right )
-
+    
     The number of parameters is equal to the three times the number of Gaussians
     plus 1 (for :math:`l_0`). This function is inspired by what Gibbs used in
     his PhD thesis.
-
+    
     Parameters
     ----------
     X : 1d or 2d array of float
@@ -833,7 +792,7 @@ def exp_gauss_warp(X, n, l0, *msb):
     mm = msb[:len(msb) / 3]
     ss = msb[len(msb) / 3:2 * len(msb) / 3]
     bb = msb[2 * len(msb) / 3:]
-
+    
     # This is done with for-loops, because trying to get fancy with
     # broadcasting was being too memory-intensive for some reason.
     if n == 0:
@@ -854,22 +813,21 @@ def exp_gauss_warp(X, n, l0, *msb):
     else:
         raise NotImplementedError("Only n <= 1 is supported!")
 
-
 class GibbsKernel1dExpGauss(GibbsKernel1d):
     r"""Gibbs warped squared exponential covariance function in 1d.
-
+    
     Uses hard-coded implementation up to first derivatives.
-
+    
     The covariance function is given by
-
+    
     .. math::
-
+        
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Warps the length scale using an exponential of Gaussian basis functions.
-
+    
     The order of the hyperparameters is:
-
+    
     = ====== =====================================
     0 sigmaf Amplitude of the covariance function.
     1 l0     Length far away from the Gaussians.
@@ -880,7 +838,7 @@ class GibbsKernel1dExpGauss(GibbsKernel1d):
     6 beta1  Amplitude of first Gaussian.
     7 beta2  And so on for all Gaussians...
     = ====== =====================================
-
+    
     Parameters
     ----------
     n_gaussians : int
@@ -894,20 +852,19 @@ class GibbsKernel1dExpGauss(GibbsKernel1d):
             num_params=3 * n_gaussians + 2,
             param_names=(
                 [r'\sigma_f', 'l_0'] +
-                [r'\mu_{{{:d}}}'.format(i + 1) for i in range(n_gaussians)] +
-                [r'\sigma_{{{:d}}}'.format(i + 1) for i in range(n_gaussians)] +
-                [r'\beta_{{{:d}}}'.format(i + 1) for i in range(n_gaussians)]
+                [r'\mu_{%d}' % (i + 1,) for i in range(n_gaussians)] +
+                [r'\sigma_{%d}' % (i + 1,) for i in range(n_gaussians)] +
+                [r'\beta_{%d}' % (i + 1,) for i in range(n_gaussians)]
             ),
             **kwargs
         )
 
-
 class BSplineWarp(object):
     """Length scale function which is a B-spline.
-
+    
     The degree is fixed at creation, the knot locations and coefficients are
     free parameters.
-
+    
     Parameters
     ----------
     k : int, optional
@@ -915,12 +872,12 @@ class BSplineWarp(object):
     """
     def __init__(self, k=3):
         self.k = k
-
+    
     def __call__(self, X, n, *tC):
         """Evaluate the length scale function with the given knots and coefficients.
-
+        
         If X is 2d, uses the first column.
-
+        
         Parameters
         ----------
         X : array of float, (`N`,)
@@ -940,27 +897,26 @@ class BSplineWarp(object):
         C = tC[nt:]
         return scipy.reshape(spev(t, C, self.k, X, n=n), shape)
 
-
 class GibbsKernel1dBSpline(GibbsKernel1d):
     r"""Gibbs warped squared exponential covariance function in 1d.
-
+    
     Uses hard-coded implementation up to first derivatives.
-
+    
     The covariance function is given by
-
+    
     .. math::
-
+        
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Warps the length scale using a B-spline with free knots but fixed order.
-
+    
     You should always put fixed boundary knots at or beyond the edge of your
     domain, otherwise the length scale will go to zero. You should always use
     hyperpriors which keep the coefficients positive, otherwise the length scale
     can go to zero/be negative.
-
+    
     The order of the hyperparameters is:
-
+    
     = ====== ==============================================
     0 sigmaf Amplitude of the covariance function.
     1 t1     First knot locations.
@@ -968,7 +924,7 @@ class GibbsKernel1dBSpline(GibbsKernel1d):
     3 C1     First coefficient.
     4 C2     And so on for all `nt + k - 1` coefficients...
     = ====== ==============================================
-
+    
     Parameters
     ----------
     nt : int
@@ -984,17 +940,16 @@ class GibbsKernel1dBSpline(GibbsKernel1d):
             BSplineWarp(k=k),
             num_params=2 * nt + k - 1 + 1,
             param_names=(
-                [r'\sigma_f', ] +
-                [r't_{{{:d}}}'.format(i + 1) for i in range(nt)] +
-                [r'C_{{{:d}}}'.format(i + 1) for i in range(nt + k - 1)]
+                [r'\sigma_f',] +
+                [r't_{%d}' % (i + 1,) for i in range(nt)] +
+                [r'C_{%d}' % (i + 1,) for i in range(nt + k - 1)]
             ),
             **kwargs
         )
 
-
 class GPWarp(object):
     """Length scale function which is a Gaussian process.
-
+    
     Parameters
     ----------
     npts : int
@@ -1012,10 +967,10 @@ class GPWarp(object):
             from .squared_exponential import SquaredExponentialKernel
             k = SquaredExponentialKernel(fixed_params=[True, False])
         self.gp = GaussianProcess(k, X=scipy.zeros(npts), y=scipy.zeros(npts))
-
+    
     def __call__(self, X, n, *hpXy):
         """Evaluate the length scale.
-
+        
         Parameters
         ----------
         X : array of float
@@ -1023,8 +978,8 @@ class GPWarp(object):
         n : int
             The order of derivative to compute.
         *hpXy : floats
-            The free hyperparameters of the GP, then the points to set the
-            value at, then the values to use.
+            The free hyperparameters of the GP, then the points to set the value
+            at, then the values to use.
         """
         hpXy = scipy.asarray(hpXy)
         hp = hpXy[:len(self.gp.free_params)]
@@ -1035,29 +990,28 @@ class GPWarp(object):
         self.gp.update_hyperparameters(hp)
         return self.gp.predict(X, n=n, return_std=False)
 
-
 class GibbsKernel1dGP(GibbsKernel1d):
     r"""Gibbs warped squared exponential covariance function in 1d.
-
+    
     Uses hard-coded implementation up to first derivatives.
-
+    
     The covariance function is given by
-
+    
     .. math::
-
+        
         k = \left ( \frac{2l(x)l(x')}{l^2(x)+l^2(x')} \right )^{1/2}\exp\left ( -\frac{(x-x')^2}{l^2(x)+l^2(x')} \right )
-
+    
     Warps the length scale using a Gaussian process which interpolates the
     values specified at a set number of points. Both the values and the
     locations of the points can be treated as free parameters.
-
+    
     You should try to pick a hyperprior which keeps the outer points close to
     the edge of the domain, as otherwise the Gaussian process will try to go to
     zero there. You should put a hyperprior on the values at the points which
     keeps them positive, otherwise unphysical length scales will result.
-
+    
     The order of the hyperparameters is:
-
+    
     = ====== ================================================
     0 sigmaf Amplitude of the covariance function.
     1 hp1    First hyperparameter of the covariance function.
@@ -1067,7 +1021,7 @@ class GibbsKernel1dGP(GibbsKernel1d):
     5 y1     Length scale at the first point.
     6 y2     And so on for all points the value is set at...
     = ====== ================================================
-
+    
     Parameters
     ----------
     npts : int
@@ -1086,10 +1040,10 @@ class GibbsKernel1dGP(GibbsKernel1d):
             w,
             num_params=len(w.gp.free_params) + 2 * npts + 1,
             param_names=(
-                [r'\sigma_f', ] +
+                [r'\sigma_f',] +
                 list(w.gp.free_param_names) +
-                [r'x_{{{:d}}}'.format(i + 1) for i in range(npts)] +
-                [r'y_{{{:d}}}'.format(i + 1) for i in range(npts)]
+                [r'x_{%d}' % (i + 1,) for i in range(npts)] +
+                [r'y_{%d}' % (i + 1,) for i in range(npts)]
             ),
             **kwargs
         )

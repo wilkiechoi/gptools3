@@ -26,6 +26,10 @@ function, given as individual arguments.
 """
 
 from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 
 from .utils import unique_rows, UniformJointPrior, MaskedBounds
 
@@ -120,7 +124,7 @@ class MeanFunction(object):
                         "list of param_names and/or list of param_bounds."
                     )
         else:
-            if num_params < 0 or not isinstance(num_params, (int, long)):
+            if num_params < 0 or not isinstance(num_params, (int, int)):
                 raise ValueError("num_params must be an integer >= 0!")
             self.num_params = num_params
         
@@ -220,14 +224,14 @@ class MeanFunction(object):
         
         if len(new_params) == len(self.free_params):
             if self.enforce_bounds:
-                for idx, new_param, bound in zip(range(0, len(new_params)), new_params, self.free_param_bounds):
+                for idx, new_param, bound in zip(list(range(0, len(new_params))), new_params, self.free_param_bounds):
                     if bound[0] is not None and new_param < bound[0]:
                         new_params[idx] = bound[0]
                     elif bound[1] is not None and new_param > bound[1]:
                         new_params[idx] = bound[1]
             self.params[~self.fixed_params] = new_params
         else:
-            raise ValueError("Length of new_params must be {:d}!".format(len(self.free_params)))
+            raise ValueError("Length of new_params must be %s!" % (len(self.free_params),))
     
     @property
     def num_free_params(self):
@@ -500,6 +504,6 @@ class LinearMeanFunction(MeanFunction):
             kwargs['param_bounds'] = [(-1e3, 1e3)] * (num_dim + 1)
         super(LinearMeanFunction, self).__init__(
             linear,
-            param_names=['m{:d}'.format(i) for i in range(0, num_dim)] + ['b'],
+            param_names=['m%d' % (i,) for i in range(0, num_dim)] + ['b'],
             **kwargs
         )

@@ -19,6 +19,12 @@
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 
 from .error_handling import GPArgumentError, GPImpossibleParamsError
 from .kernel import Kernel, ZeroKernel, DiagonalNoiseKernel
@@ -46,10 +52,10 @@ except ImportError:
     )
     InterruptiblePool = multiprocessing.Pool
 try:
-    import triangle
+    import corner
 except ImportError:
     warnings.warn(
-        "Could not import triangle: plotting of MCMC results will not be available.",
+        "Could not import corner: plotting of MCMC results will not be available.",
         ImportWarning
     )
 
@@ -414,7 +420,7 @@ class GaussianProcess(object):
         if len(y.shape) != 1:
             raise ValueError(
                 "Training targets y must have only one dimension with length "
-                "greater than one! Shape of y given is {}".format(y.shape)
+                "greater than one! Shape of y given is %s" % (y.shape,)
             )
         
         # Handle scalar error or verify shape of array error matches shape of y:
@@ -426,9 +432,8 @@ class GaussianProcess(object):
             err_y = scipy.asarray(err_y, dtype=float)
             if err_y.shape != y.shape:
                 raise ValueError(
-                    "When using array-like err_y, shape must match shape of "
-                    "y! Shape of err_y given is {}, shape of y given is "
-                    "{}.".format(err_y.shape, y.shape)
+                    "When using array-like err_y, shape must match shape of y! "
+                    "Shape of err_y given is %s, shape of y given is %s." % (err_y.shape, y.shape)
                 )
         if (err_y < 0).any():
             raise ValueError("All elements of err_y must be non-negative!")
@@ -440,9 +445,8 @@ class GaussianProcess(object):
             X = X.T
         if T is None and X.shape != (len(y), self.num_dim):
             raise ValueError(
-                "Shape of training inputs must be (len(y), k.num_dim)! X "
-                "given has shape {}, shape of y is {} and "
-                "num_dim={:d}.".format(X.shape, y.shape, self.num_dim)
+                "Shape of training inputs must be (len(y), k.num_dim)! X given "
+                "has shape %s, shape of y is %s and num_dim=%d." % (X.shape, y.shape, self.num_dim)
             )
         
         # Handle scalar derivative orders or verify shape of array derivative
@@ -458,11 +462,9 @@ class GaussianProcess(object):
                 n = n.T
             if n.shape != X.shape:
                 raise ValueError(
-                    "When using array-like n, shape must be "
-                    "(len(y), k.num_dim)! Shape of n given is {}, shape of y "
-                    "given is {} and num_dim={:d}.".format(
-                        n.shape, y.shape, self.num_dim
-                    )
+                    "When using array-like n, shape must be (len(y), k.num_dim)! "
+                    "Shape of n given is %s, shape of y given is %s and num_dim=%d."
+                    % (n.shape, y.shape, self.num_dim)
                 )
         if (n < 0).any():
             raise ValueError("All elements of n must be non-negative integers!")
@@ -711,8 +713,7 @@ class GaussianProcess(object):
             if trial >= 1:
                 if self.verbose:
                     warnings.warn(
-                        "No solutions found on trial {:d}, retrying random "
-                        "starts.".format(trial - 1),
+                        "No solutions found on trial %d, retrying random starts." % (trial - 1,),
                         RuntimeWarning
                     )
                 # Produce a new initial guess:
@@ -752,17 +753,17 @@ class GaussianProcess(object):
         
         self.update_hyperparameters(res_min.x)
         if verbose:
-            print("Got {:d} completed starts, optimal result is:".format(len(res)))
+            print("Got %d completed starts, optimal result is:" % (len(res),))
             print(res_min)
-            print("\nLL\t{:.3g}".format(-1 * res_min.fun))
+            print("\nLL\t%.3g" % (-1 * res_min.fun))
             for v, l in zip(res_min.x, self.free_param_names):
-                print("{:s}\t{:.3g}".format(l.replace('\\', ''), v))
+                print("%s\t%.3g" % (l.translate(None, '\\'), v))
         if not res_min.success:
             warnings.warn(
-                "Optimizer {:s} reports failure, selected hyperparameters are "
-                "likely NOT optimal. Status: {:d}, Message: '{:s}'. Try "
-                "adjusting bounds, initial guesses or the number of random "
-                "starts used.".format(
+                "Optimizer %s reports failure, selected hyperparameters are "
+                "likely NOT optimal. Status: %d, Message: '%s'. Try adjusting "
+                "bounds, initial guesses or the number of random starts used."
+                % (
                     method,
                     res_min.status,
                     res_min.message
@@ -774,11 +775,10 @@ class GaussianProcess(object):
         if ((res_min.x <= 1.001 * bounds[:, 0]).any() or
             (res_min.x >= 0.999 * bounds[:, 1]).any()):
             warnings.warn(
-                "Optimizer appears to have hit/exceeded the bounds. Bounds "
-                "are:\n{:s}\n, solution is:\n{:s}. Try adjusting bounds, "
-                "initial guesses or the number of random starts used.".format(
-                    str(bounds), str(res_min.x)
-                )
+                "Optimizer appears to have hit/exceeded the bounds. Bounds are:\n"
+                "%s\n, solution is:\n%s. Try adjusting bounds, initial guesses "
+                "or the number of random starts used."
+                % (str(bounds), str(res_min.x),)
             )
         return (res_min, len(res))
     
@@ -919,9 +919,8 @@ class GaussianProcess(object):
             if Xstar.shape[1] != self.num_dim:
                 raise ValueError(
                     "Second dimension of Xstar must be equal to self.num_dim! "
-                    "Shape of Xstar given is {:s}, num_dim is {:d}.".format(
-                        Xstar.shape, self.num_dim
-                    )
+                    "Shape of Xstar given is %s, num_dim is %d."
+                    % (Xstar.shape, self.num_dim)
                 )
             
             # Process T:
@@ -929,19 +928,16 @@ class GaussianProcess(object):
                 output_transform = scipy.atleast_2d(scipy.asarray(output_transform, dtype=float))
                 if output_transform.ndim != 2:
                     raise ValueError(
-                        "output_transform must have exactly 2 dimensions! "
-                        "Shape of output_transform given is {:s}.".format(
-                            str(output_transform.shape)
-                        )
+                        "output_transform must have exactly 2 dimensions! Shape "
+                        "of output_transform given is %s."
+                        % (output_transform.shape,)
                     )
                 if output_transform.shape[1] != Xstar.shape[0]:
                     raise ValueError(
-                        "output_transform must have the same number of "
-                        "columns the number of rows in Xstar! Shape of "
-                        "output_transform given is {:s}, shape of Xstar is "
-                        "{:s}.".format(
-                            str(output_transform.shape), str(Xstar.shape)
-                        )
+                        "output_transform must have the same number of columns "
+                        "the number of rows in Xstar! Shape of output_transform "
+                        "given is %s, shape of Xstar is %s."
+                        % (output_transform.shape, Xstar.shape,)
                     )
             
             # Process n:
@@ -955,9 +951,9 @@ class GaussianProcess(object):
                     n = n.T
                 if n.shape != Xstar.shape:
                     raise ValueError(
-                        "When using array-like n, shape must match shape of "
-                        "Xstar! Shape of n given is {:s}, shape of Xstar "
-                        "given is {:s}.".format(str(n.shape), str(Xstar.shape))
+                        "When using array-like n, shape must match shape of Xstar! "
+                        "Shape of n given is %s, shape of Xstar given is %s."
+                        % (n.shape, Xstar.shape)
                     )
             if (n < 0).any():
                 raise ValueError("All elements of n must be non-negative integers!")
@@ -1271,7 +1267,8 @@ class GaussianProcess(object):
                 if self.verbose:
                     warnings.warn(
                         "Failure when drawing from MVN! Falling back on eig. "
-                        "Exception was:\n{:s}".format(e),
+                        "Exception was:\n%s"
+                        % (e,),
                         RuntimeWarning
                     )
                 method = 'eig'
@@ -1285,9 +1282,8 @@ class GaussianProcess(object):
         valid_types = ('standard normal', 'uniform')
         if rand_type not in valid_types:
             raise ValueError(
-                "rand_type {:s} not recognized! Valid options are: {}.".format(
-                    rand_type, valid_types
-                )
+                "rand_type %s not recognized! Valid options are: %s."
+                % (rand_type, valid_types,)
             )
         if rand_type == 'uniform':
             rand_vars = scipy.stats.norm.ppf(rand_vars)
@@ -1320,13 +1316,13 @@ class GaussianProcess(object):
                     modify_mask = ((Q[-1, :] - 2 * Q[-2, :] + Q[-3, :]) < 0.0)
                 else:
                     raise ValueError(
-                        "modify_sign {:s} not recognized!".format(modify_sign)
+                        "modify_sign %s not recognized!" % (modify_sign,)
                     )
                 Q[:, modify_mask] *= -1.0
             Lam_1_2 = scipy.diag(scipy.sqrt(eig))
             L = Q.dot(Lam_1_2)
         else:
-            raise ValueError("method {:s} not recognized!".format(method))
+            raise ValueError("method %s not recognized!" % (method,))
         return scipy.atleast_2d(mean).T + L.dot(rand_vars[:num_eig, :])
     
     def update_hyperparameters(self, new_params, hyper_deriv_handling='default', exit_on_bounds=True, inf_on_error=True):
@@ -1392,10 +1388,9 @@ class GaussianProcess(object):
             if inf_on_error:
                 if not isinstance(e, GPImpossibleParamsError) and self.verbose:
                     warnings.warn(
-                        "Unhandled exception when updating GP! Exception was:"
-                        "\n{:s}\nState of params is: {:s}".format(
-                            traceback.format_exc(), str(self.free_params[:])
-                        )
+                        "Unhandled exception when updating GP! Exception was:\n%s\n"
+                        "State of params is: %s"
+                        % (traceback.format_exc(), str(self.free_params[:]))
                     )
                 self.use_hyper_deriv = use_hyper_deriv
                 if use_hyper_deriv and hyper_deriv_handling == 'default':
@@ -1773,7 +1768,7 @@ class GaussianProcess(object):
                 )
             else:
                 raise NotImplementedError(
-                    "Sampler type {:s} not supported!".format(sampler_type)
+                    "Sampler type %s not supported!" % (sampler_type,)
                 )
         else:
             sampler.a = sampler_a
@@ -1792,16 +1787,16 @@ class GaussianProcess(object):
         if plot_posterior and plot_chains:
             plot_sampler(
                 sampler,
-                labels=['${:s}$'.format(l) for l in self.free_param_names],
+                labels=['$%s$' % (l,) for l in self.free_param_names],
                 burn=burn,
                 **plot_kwargs
             )
         else:
             if plot_posterior:
-                triangle.corner(
+                corner.corner(
                     flat_trace,
                     plot_datapoints=False,
-                    labels=['${:s}$'.format(l) for l in self.free_param_names]
+                    labels=['$%s$' % (l,) for l in self.free_param_names]
                 )
             if plot_chains:
                 f = plt.figure()
@@ -1813,19 +1808,19 @@ class GaussianProcess(object):
                     #     detrend=plt.mlab.detrend_mean
                     # )
                     # a.set_xlabel('lag')
-                    # a.set_title('${:s}$ autocorrelation'.format(self.free_param_names[k]))
+                    # a.set_title('$%s$ autocorrelation' % (self.free_param_names[k],))
                     a = f.add_subplot(ndim, 1, 0 * ndim + k + 1)
                     for chain in sampler.chain[:, :, k]:
                         a.plot(chain)
                     a.set_xlabel('sample')
-                    a.set_ylabel('${:s}$'.format(self.free_param_names[k]))
-                    a.set_title('${:s}$ all chains'.format(self.free_param_names[k]))
+                    a.set_ylabel('$%s$' % (self.free_param_names[k],))
+                    a.set_title('$%s$ all chains' % (self.free_param_names[k],))
                     a.axvline(burn, color='r', linewidth=3, ls='--')
                     # a = f.add_subplot(2, ndim, 1 * ndim + k + 1)
                     # a.plot(flat_trace[:, k])
                     # a.set_xlabel('sample')
-                    # a.set_ylabel('${:s}$'.format(self.free_param_names[k]))
-                    # a.set_title('${:s}$ flattened, burned and thinned chain'.format(self.free_param_names[k]))
+                    # a.set_ylabel('$%s$' % (self.free_param_names[k],))
+                    # a.set_title('$%s$ flattened, burned and thinned chain' % (self.free_param_names[k],))
         
         # Print a summary of the sampler:
         print("MCMC parameter summary:")
@@ -1833,7 +1828,7 @@ class GaussianProcess(object):
         mean, ci_l, ci_u = summarize_sampler(sampler, burn=burn)
         names = self.free_param_names[:]
         for n, m, l, u in zip(names, mean, ci_l, ci_u):
-            print("{:s}\t{:4.4g}\t[{:4.4g}, {:4.4g}]".format(n, m, l, u))
+            print("%s\t%4.4g\t[%4.4g, %4.4g]" % (n, m, l, u))
         
         return sampler
     
@@ -2060,7 +2055,7 @@ class GaussianProcess(object):
             finally:
                 pool.close()
         else:
-            res = map(_ComputeLWrapper(self, X, n), flat_trace)
+            res = list(map(_ComputeLWrapper(self, X, n), flat_trace))
         
         return res
     
@@ -2137,7 +2132,7 @@ class GaussianProcess(object):
             finally:
                 pool.close()
         else:
-            res = map(_ComputeWWrapper(self, X, n), flat_trace)
+            res = list(map(_ComputeWWrapper(self, X, n), flat_trace))
         
         return res
     
@@ -2331,7 +2326,8 @@ class _ComputeGPWrapper(object):
             if self.gp.verbose:
                 warnings.warn(
                     "Encountered exception during evaluation of MCMC samples. "
-                    "Exception is:\n{:s}\nParams are:\n{:s}".format(
+                    "Exception is:\n%s\nParams are:\n%s"
+                    % (
                         traceback.format_exc(),
                         str(list(p_case))
                     )
@@ -2370,9 +2366,7 @@ class _ComputeLWrapper(object):
             if self.gp.verbose:
                 warnings.warn(
                     "Encountered exception during evaluation of MCMC samples. "
-                    "Exception is:\n{:s}\nParams are:\n{:s}".format(
-                        traceback.format_exc(), str(list(p_case))
-                    )
+                    "Exception is:\n%s\nParams are:\n%s" % (traceback.format_exc(), str(list(p_case)))
                 )
         return out
 
@@ -2413,9 +2407,7 @@ class _ComputeWWrapper(object):
             if self.gp.verbose:
                 warnings.warn(
                     "Encountered exception during evaluation of MCMC samples. "
-                    "Exception is:\n{:s}\nParams are:\n{:s}".format(
-                        traceback.format_exc(), str(list(p_case))
-                    )
+                    "Exception is:\n%s\nParams are:\n%s" % (traceback.format_exc(), str(list(p_case)))
                 )
         return out
 
@@ -2476,8 +2468,9 @@ class _OptimizeHyperparametersEval(object):
         except:
             if self.gp.verbose:
                 warnings.warn(
-                    "Minimizer failed, skipping sample. Error is: {:s}. "
-                    "State of params is: {:s}".format(
+                    "Minimizer failed, skipping sample. Error is: %s. "
+                    "State of params is: %s"
+                    % (
                         traceback.format_exc(),
                         str(self.gp.free_params[:]),
                     ),
@@ -2566,14 +2559,14 @@ class Constraint(object):
                     self.loc = scipy.asarray([loc], dtype=float)
                 else:
                     raise ValueError("Argument loc must be 'min', 'max' or an "
-                                     "array of length {:d}".format(self.gp.num_dim))
+                                     "array of length %d" % self.gp.num_dim)
             else:
                 loc = scipy.asarray(loc, dtype=float)
                 if loc.shape == (self.gp.num_dim,):
                     self.loc = loc
                 else:
                     raise ValueError("Argument loc must be 'min', 'max' or have "
-                                     "length {:d}".format(self.gp.num_dim))
+                                     "length %d" % self.gp.num_dim)
         
         if type_ in ('gt', 'lt'):
             self.type_ = type_
@@ -2595,14 +2588,14 @@ class Constraint(object):
                         bounds[k] = scipy.asarray([bounds[k]], dtype=float)
                     else:
                         raise ValueError("Each element in argument bounds must "
-                                         "have length {:d}".format(self.gp.num_dim))
+                                         "have length %d" % self.gp.num_dim)
                 else:
                     bounds[k] = scipy.asarray(bounds[k], dtype=float)
                     if bounds[k].shape != (self.gp.num_dim,):
                         raise ValueError("Each element in argument bounds must "
-                                         "have length {:d}".format(self.gp.num_dim))
+                                         "have length %d" % self.gp.num_dim)
         # Unfold bounds into the shape needed by minimize:
-        self.bounds = zip(bounds[0], bounds[1])
+        self.bounds = list(zip(bounds[0], bounds[1]))
     
     def __call__(self, params):
         """Returns a non-negative number if the constraint is satisfied.
@@ -2642,13 +2635,10 @@ class Constraint(object):
                 )
                 
             if not res.success:
-                warnings.warn(
-                    "Solver reports failure, extremum was likely NOT found. "
-                    "Status: {:d}, Message: '{:s}'".format(
-                        res.status, res.message
-                    ),
-                    RuntimeWarning
-                )
+                warnings.warn("Solver reports failure, extremum was likely NOT "
+                              "found. Status: %d, Message: '%s'"
+                              % (res.status, res.message),
+                              RuntimeWarning)
             val = factor * res.fun
         if self.type_ == 'gt':
             return val - self.boundary_val

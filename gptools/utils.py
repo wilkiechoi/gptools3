@@ -19,6 +19,11 @@
 """
 
 from __future__ import division
+from builtins import str
+from builtins import next
+from builtins import zip
+from builtins import range
+from builtins import object
 
 import collections
 import warnings
@@ -203,7 +208,7 @@ class MaskedBounds(object):
     def __init__(self, a, m):
         self.a = a
         self.m = m
-    
+
     def __getitem__(self, pos):
         """Get the item(s) at location `pos` in the masked array.
         """
@@ -365,7 +370,7 @@ class UniformJointPrior(JointPrior):
         super(UniformJointPrior, self).__init__(**kwargs)
         if ub is not None:
             try:
-                bounds = zip(bounds, ub)
+                bounds = list(zip(bounds, ub))
             except TypeError:
                 bounds = [(bounds, ub)]
         self.bounds = bounds
@@ -1212,7 +1217,7 @@ class SortedUniformJointPrior(JointPrior):
         c = scipy.zeros(len(self.bounds))
         
         # Old way, based on sorted uniform variables:
-        # for k in range(0, len(self.bounds)):
+        # for k in xrange(0, len(self.bounds)):
         #     if p[k] <= self.bounds[k][0]:
         #         c[k] = 0.0
         #     elif p[k] >= self.bounds[k][1]:
@@ -1328,7 +1333,7 @@ def wrap_fmin_slsqp(fun, guess, opt_kwargs={}):
             elif con['type'] == 'ineq':
                 ieqcons += [con['fun'],]
             else:
-                raise ValueError("Invalid constraint type {:s}!".format(con['type']))
+                raise ValueError("Invalid constraint type %s!" % (con['type'],))
 
     if 'jac' in opt_kwargs:
         warnings.warn("Jacobian not supported for default solver SLSQP!",
@@ -1340,7 +1345,7 @@ def wrap_fmin_slsqp(fun, guess, opt_kwargs={}):
 
     if 'options' in opt_kwargs:
         opts = opt_kwargs.pop('options')
-        opt_kwargs = dict(opt_kwargs.items() + opts.items())
+        opt_kwargs = dict(list(opt_kwargs.items()) + list(opts.items()))
 
     # Other keywords with less likelihood for causing failures are silently ignored:
     opt_kwargs.pop('hess', None)
@@ -1353,6 +1358,7 @@ def wrap_fmin_slsqp(fun, guess, opt_kwargs={}):
         full_output=True,
         eqcons=eqcons,
         ieqcons=ieqcons,
+        iprint=0,
         **opt_kwargs
     )
 
@@ -1703,7 +1709,7 @@ def unique_rows(arr, return_index=False, return_inverse=False):
             )
         # Handle bug in numpy 1.6.2:
         rows = [_Row(row) for row in b]
-        srt_idx = sorted(range(len(rows)), key=rows.__getitem__)
+        srt_idx = sorted(list(range(len(rows))), key=rows.__getitem__)
         rows = scipy.asarray(rows)[srt_idx]
         row_cmp = [-1]
         for k in range(1, len(srt_idx)):
@@ -1850,7 +1856,7 @@ def compute_stats(vals, check_nan=False, robust=False, axis=1, plot_QQ=False, bi
             a_QQ.clear()
             a_hist.clear()
             idx = slider.val
-            title.set_text("{:s}, n={:d}".format(name, idx))
+            title.set_text("%s, n=%d" % (name, idx))
             
             nan_idxs = scipy.isnan(vals[idx, :])
             if not nan_idxs.all():
@@ -2007,7 +2013,7 @@ def summarize_sampler(sampler, weights=None, burn=0, ci=0.95, chain_mask=None):
                 weights = weights[burn:]
                 weights = weights.ravel()
     else:
-        raise ValueError("Unknown sampler class: {:s}".format(type(sampler),))
+        raise ValueError("Unknown sampler class: %s" % (type(sampler),))
     
     cibdry = 100.0 * (1.0 - ci) / 2.0
     if weights is None:
@@ -2176,7 +2182,7 @@ def plot_sampler(
             covs = [None,] * len(points)
         if colors is None:
             c_cycle = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
-            colors = [c_cycle.next() for p in points]
+            colors = [next(c_cycle) for p in points]
     # Create axes:
     try:
         k = sampler.flatchain.shape[-1]
@@ -2299,13 +2305,41 @@ def plot_sampler(
         else:
             masked_weights = weights
     else:
-        raise ValueError("Unknown sampler class: {:s}".format(type(sampler)))
-
+        raise ValueError("Unknown sampler class: %s" % (type(sampler),))
+    
     # j is the row, i is the column.
     for i in range(0, k):
         axes[i, i].clear()
         if plot_hist:
             axes[i, i].hist(flat_trace[:, i], bins=bins, color=hist_color, weights=masked_weights, normed=True, histtype='stepfilled')
+            # import pdb
+            # pdb.set_trace()
+
+            chain_lb,chain_median,chain_ub = numpy.percentile(flat_trace[:, i], [16, 50, 84])
+
+            # # Plot 68% (asymmetric) range from the median
+            # gHi=numpy.where(flat_trace[:,i]>= numpy.median(flat_trace[:,i]))[0]
+            # gLo=numpy.where(flat_trace[:,i]< numpy.median(flat_trace[:,i]))[0]
+
+            # sLim=0.68
+            # vSortLo=numpy.sort(flat_trace[gLo,i])
+            # vSortHi=numpy.sort(flat_trace[gHi,i])
+
+            # NormLo=vSortLo[numpy.int((1.0-sLim)*numpy.size(vSortLo))]
+            # NormHi=vSortHi[numpy.int(sLim      *numpy.size(vSortHi))]
+
+            # Plot mean on histograms: 
+            # axes[i, i].plot([numpy.median(flat_trace[:,i]), numpy.median(flat_trace[:,i])],[axes[i,i].get_ylim()[0],axes[i,i].get_ylim()[1]],'r-')
+            axes[i, i].plot([chain_median, chain_median],[axes[i,i].get_ylim()[0],axes[i,i].get_ylim()[1]],'r-')
+            
+            # Include upper and lower uncertainty estimates:
+            # axes[i, i].plot([NormLo, NormLo],[axes[i,i].get_ylim()[0],axes[i,i].get_ylim()[1]],'r--')
+            # axes[i, i].plot([NormHi, NormHi],[axes[i,i].get_ylim()[0],axes[i,i].get_ylim()[1]],'r--')
+            axes[i, i].plot([chain_lb, chain_lb],[axes[i,i].get_ylim()[0],axes[i,i].get_ylim()[1]],'r--')
+            axes[i, i].plot([chain_ub, chain_ub],[axes[i,i].get_ylim()[0],axes[i,i].get_ylim()[1]],'r--')
+
+            axes[i,i].set_title('$%.3f^{%.3f}_{%.3f}$' %(chain_median,chain_ub,chain_lb),fontsize=9)
+
         if plot_samples:
             axes[i, i].plot(flat_trace[:, i], scipy.zeros_like(flat_trace[:, i]), ',', alpha=0.1)
         if points is not None:
@@ -2550,7 +2584,7 @@ def plot_sampler_fingerprint(
             flat_trace = flat_trace[mask, :]
             weights = weights[mask]
     else:
-        raise ValueError("Unknown sampler class: {:s}".format(type(sampler)))
+        raise ValueError("Unknown sampler class: %s" % (type(sampler),))
     
     if labels is None:
         labels = [''] * k
@@ -2597,7 +2631,7 @@ def plot_sampler_fingerprint(
         else:
             c_cycle = itertools.cycle(scipy.atleast_1d(point_color))
         for p in u_points:
-            c = c_cycle.next()
+            c = next(c_cycle)
             for i, uv in enumerate(p):
                 a.plot([i, i + 1], [uv, uv], color=c, lw=point_lw)
     
@@ -2702,8 +2736,8 @@ def plot_sampler_cov(
             flat_trace = flat_trace[mask, :]
             weights = weights[mask]
     else:
-        raise ValueError("Unknown sampler class: {:s}".format(type(sampler)))
-
+        raise ValueError("Unknown sampler class: %s" % (type(sampler),))
+    
     if labels is None:
         labels = [''] * k
     

@@ -23,6 +23,9 @@ incorporated in the main utils submodule.
 """
 
 from __future__ import division
+from builtins import str
+from builtins import zip
+from builtins import range
 
 from .gaussian_process import GaussianProcess
 from .error_handling import GPArgumentError
@@ -108,7 +111,7 @@ def parallel_compute_ll_matrix(gp, bounds, num_pts, num_proc=None):
         vals = scipy.asarray(
             pool.map(
                 _compute_ll_matrix_wrapper,
-                zip(gp_cases, pv_cases, num_pts_cases)
+                list(zip(gp_cases, pv_cases, num_pts_cases))
             )
         )
     finally:
@@ -195,9 +198,9 @@ def slice_plot(*args, **kwargs):
         a_cbar.clear()
         idxs = [int(slider.val) for slider in sliders]
         vals = [args[k + 3][idxs[k]] for k in range(0, num_axes - 2)]
-        descriptions = tuple(itertools.chain.from_iterable(itertools.izip(names[2:], vals)))
-        fmt = "Slice" + (num_axes - 2) * ", {:s}: {:f}"
-        title.set_text(fmt.format(descriptions))
+        descriptions = tuple(itertools.chain.from_iterable(zip(names[2:], vals)))
+        fmt = "Slice" + (num_axes - 2) * ", %s: %f"
+        title.set_text(fmt % descriptions)
         
         a_main.set_xlabel(names[1])
         a_main.set_ylabel(names[0])
