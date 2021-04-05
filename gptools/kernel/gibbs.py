@@ -322,7 +322,7 @@ class GibbsKernel1d(Kernel):
             # Derviative expressions evaluated with Mathematica, assuming l>0.
             if (n_combined_state == scipy.asarray([0, 0])).all():
                 k[idxs] = (scipy.sqrt(2.0 * lx[idxs] * ly[idxs] / lx2ly2[idxs]) *
-                           scipy.exp(-x_y[idxs]**2 / lx2ly2[idxs]))
+                           scipy.exp(-x_y[idxs]**2 / lx2ly2[idxs])).squeeze(1)
             elif (n_combined_state == scipy.asarray([1, 0])).all():
                 k[idxs] = (
                     (
@@ -335,7 +335,7 @@ class GibbsKernel1d(Kernel):
                             ly[idxs]**4 * lx1[idxs]
                         )
                     ) / (scipy.sqrt(2 * lx[idxs] * ly[idxs]) * lx2ly2[idxs]**2.5)
-                )
+                ).squeeze(1)
             elif (n_combined_state == scipy.asarray([0, 1])).all():
                 k[idxs] = (
                     (
@@ -348,7 +348,7 @@ class GibbsKernel1d(Kernel):
                             lx[idxs]**4 * ly1[idxs]
                         )
                     ) / (scipy.sqrt(2 * lx[idxs] * ly[idxs]) * lx2ly2[idxs]**2.5)
-                )
+                ).squeeze(1)
             elif (n_combined_state == scipy.asarray([1, 1])).all():
                 k[idxs] = (
                     (
@@ -392,7 +392,7 @@ class GibbsKernel1d(Kernel):
                             )
                         )
                     ) / (2 * scipy.sqrt(2 * lx[idxs] * ly[idxs]) * lx2ly2[idxs]**4.5)
-                )
+                ).squeeze(1)
             else:
                 raise NotImplementedError("Derivatives greater than [1, 1] are not supported!")
         k = self.params[0]**2 * k

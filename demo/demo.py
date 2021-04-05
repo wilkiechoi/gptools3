@@ -32,7 +32,7 @@ try:
     import cPickle as pkl
 except ImportError:
     import pickle as pkl
-import scipy
+import numpy
 import matplotlib.pyplot as plt
 plt.ion()
 
@@ -200,7 +200,7 @@ print(gp_noise.params[:])
 # We'll come back to do the MCMC estimates in a bit -- first let's make some
 # predictions with the trained GP.
 # First, define a grid to evaluate on:
-X_star = scipy.linspace(0, 1.1, 400)
+X_star = numpy.linspace(0, 1.1, 400)
 # Now, we can make a prediction of the mean and standard deviation of the fit:
 y_star, err_y_star = gp.predict(X_star)
 # And we can plot this with our data:
@@ -247,8 +247,8 @@ gptools.univariate_envelope_plot(
 # If we wanted to get the covariances between the values and derivatives, we
 # should predict them at the same time by passing an array for `n`:
 out = gp.predict(
-    scipy.concatenate((X_star, X_star)),
-    n=scipy.concatenate((scipy.zeros_like(X_star), scipy.ones_like(X_star))),
+    numpy.concatenate((X_star, X_star)),
+    n=numpy.concatenate((numpy.zeros_like(X_star), numpy.ones_like(X_star))),
     full_output=True
 )
 # `out` contains the mean under key `mean`, the standard deviation under key
@@ -264,9 +264,9 @@ a_val.plot(X_star, y_samp, color='r', alpha=0.5)
 # When a noise kernel has been used, this can be used to make synthetic data,
 # including noise:
 y_synth = gp_noise.draw_sample(
-    scipy.sort(core_data['X']), num_samp=10, noise=True
+    numpy.sort(core_data['X']), num_samp=10, noise=True
 )
-a_val.plot(scipy.sort(core_data['X']), y_synth, 'c.', alpha=0.5)
+a_val.plot(numpy.sort(core_data['X']), y_synth, 'c.', alpha=0.5)
 # This also supports the `n` keyword, just like `predict` does.
 
 # The errorbars on the gradient are often underestimated by using a MAP
@@ -283,14 +283,14 @@ a_val.plot(scipy.sort(core_data['X']), y_synth, 'c.', alpha=0.5)
 # chains have settled down (and hence what to set `burn` to). See the
 # documentation on `sample_hyperparameter_posterior` for more details.
 y_grad_y_star, std_y_grad_y_star = gp.predict(
-    scipy.concatenate((X_star, X_star)),
-    n=scipy.concatenate((scipy.zeros_like(X_star), scipy.ones_like(X_star))),
+    numpy.concatenate((X_star, X_star)),
+    n=numpy.concatenate((numpy.zeros_like(X_star), numpy.ones_like(X_star))),
     use_MCMC=True,
     nsamp=200,
     burn=100,
     thin=10,
-    plot_posterior=True,
-    plot_chains=True
+    plot_posterior=False,
+    plot_chains=False
 )
 gptools.univariate_envelope_plot(
     X_star,
@@ -313,8 +313,8 @@ gptools.univariate_envelope_plot(
 sampler = gp_noise.sample_hyperparameter_posterior(
     nsamp=200,
     burn=100,
-    plot_posterior=True,
-    plot_chains=True
+    plot_posterior=False,
+    plot_chains=False
 )
 # With the sampler already computed, the computational advantage of predicting
 # the values and gradients at the same time is no longer there:
@@ -387,7 +387,7 @@ gp = gptools.GaussianProcess(k_gibbs)
 gp.add_data(core_data['X'], core_data['y'], err_y=core_data['err_y'])
 gp.add_data(edge_data['X'], edge_data['y'], err_y=edge_data['err_y'])
 gp.add_data(0, 0, n=1)
-gp.optimize_hyperparameters(verbose=True)
+#gp.optimize_hyperparameters(verbose=True)
 y_star, std_y_star = gp.predict(X_star)
 gptools.univariate_envelope_plot(
     X_star,
@@ -442,8 +442,8 @@ gptools.univariate_envelope_plot(
 sampler = gp.sample_hyperparameter_posterior(
     nsamp=500,
     burn=400,
-    plot_posterior=True,
-    plot_chains=True
+    plot_posterior=False,
+    plot_chains=False
 )
 # Examination of the posterior distribution tells us that `b` (the pedestal
 # foot) is more or less unconstrained. Therefore, better prior information or

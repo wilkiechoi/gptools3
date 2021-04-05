@@ -757,7 +757,8 @@ class GaussianProcess(object):
             print(res_min)
             print("\nLL\t%.3g" % (-1 * res_min.fun))
             for v, l in zip(res_min.x, self.free_param_names):
-                print("%s\t%.3g" % (l.translate(None, '\\'), v))
+                #print("%s\t%.3g" % (l.translate(None, '\\'), v))
+                print("%s\t%.3g" % (l.replace('\\', ''), v))
         if not res_min.success:
             warnings.warn(
                 "Optimizer %s reports failure, selected hyperparameters are "
@@ -1756,6 +1757,9 @@ class GaussianProcess(object):
                     threads=num_proc,
                     a=sampler_a
                 )
+                theta0 = self.hyperprior.random_draw(size=nwalkers).T
+                theta0 = theta0[:, ~self.fixed_params]
+                sampler.run_mcmc(theta0, 1)
             elif sampler_type == 'pt':
                 # TODO: Finish this!
                 raise NotImplementedError("PTSampler not done yet!")
@@ -1772,6 +1776,7 @@ class GaussianProcess(object):
                 )
         else:
             sampler.a = sampler_a
+        
         if sampler.chain.size == 0:
             theta0 = self.hyperprior.random_draw(size=nwalkers).T
             theta0 = theta0[:, ~self.fixed_params]

@@ -124,7 +124,7 @@ class Kernel(object):
     def __init__(self, num_dim=1, num_params=0, initial_params=None,
                  fixed_params=None, param_bounds=None, param_names=None,
                  enforce_bounds=False, hyperprior=None):
-        if num_params < 0 or not isinstance(num_params, (int, long)):
+        if num_params < 0 or not isinstance(num_params, (int)):
             raise ValueError("num_params must be an integer >= 0!")
         self.num_params = num_params
         if param_names is None:
@@ -133,7 +133,7 @@ class Kernel(object):
             raise ValueError("param_names must be a list of length num_params!")
         self.param_names = scipy.asarray(param_names, dtype=str)
         
-        if num_dim < 1 or not isinstance(num_dim, (int, long)):
+        if num_dim < 1 or not isinstance(num_dim, (int)):
             raise ValueError("num_dim must be an integer > 0!")
         self.num_dim = num_dim
         
@@ -570,7 +570,7 @@ class ProductKernel(BinaryKernel):
             # been offset by self.num_dim. For instance, if ni = [1, 2] and
             # nj = [3, 4], deriv_pattern will be [0, 1, 1, 2, 2, 2, 3, 3, 3, 3].
             deriv_pattern = []
-            for idx in xrange(0, len(row)):
+            for idx in range(0, len(row)):
                 deriv_pattern.extend(row[idx] * [idx])
             
             idxs = (nij == row).all(axis=1)
@@ -690,7 +690,7 @@ class ChainRuleKernel(Kernel):
         # Example: For d^3 k(x, y, z) / dx^2 dy, n would be [2, 1, 0] and
         # deriv_pattern should be [0, 0, 1]. For k(x, y, z) deriv_pattern is [].
         deriv_pattern = []
-        for idx in xrange(0, len(n)):
+        for idx in range(0, len(n)):
             deriv_pattern.extend(n[idx] * [idx])
         deriv_pattern = scipy.asarray(deriv_pattern, dtype=int)
         # Handle non-derivative case separately for efficiency:
@@ -943,7 +943,7 @@ class MaskedKernel(Kernel):
                                            hyperprior=base.hyperprior)
         self.mask = mask
         # maskC is the complement of mask:
-        self.maskC = range(0, self.num_dim)
+        self.maskC = list(range(0, self.num_dim))
         for v in self.mask:
             self.maskC.remove(v)
         self.scale = scale

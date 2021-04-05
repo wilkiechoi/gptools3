@@ -2311,7 +2311,7 @@ def plot_sampler(
     for i in range(0, k):
         axes[i, i].clear()
         if plot_hist:
-            axes[i, i].hist(flat_trace[:, i], bins=bins, color=hist_color, weights=masked_weights, normed=True, histtype='stepfilled')
+            axes[i, i].hist(flat_trace[:, i], bins=bins, color=hist_color, weights=masked_weights, histtype='stepfilled')
             # import pdb
             # pdb.set_trace()
 
